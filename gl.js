@@ -7,12 +7,15 @@ class Gl {
       document.body.append(this.c);
     }
     this.resize();
+    this.mouse = { x: 0, y: 0 };
     window.addEventListener("resize",() => {
       this.resize();
       this.init();
     });
+
     this.gl = this.c.getContext("webgl") || this.c.getContext("experimental-webgl");
     this.createProgram(vertex,fragment);
+    this.c.addEventListener("mousemove",(event) => { this.trackMouse(event) });
     this.init();
   }
   init() {
@@ -48,10 +51,15 @@ class Gl {
   get height() {
     return this.c.height;    
   }
+  trackMouse(e) {
+    this.mouse.x = e.clientX;
+    this.mouse.y = e.clientY;
+  }
   initBuffers() {
     this.positionLocation = this.gl.getAttribLocation(this.program, "a_position");
     this.texcoordLocation = this.gl.getAttribLocation(this.program, "a_texCoord");
     this.matrixLocation = this.gl.getUniformLocation(this.program, "u_matrix");
+    this.perspectiveLocation = this.gl.getUniformLocation(this.program, "perspectiveMatrix");
     this.textureLocation = this.gl.getUniformLocation(this.program, "u_texture");
 
     // Create a buffer.
@@ -124,7 +132,7 @@ class Gl {
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, img);
       return textureInfo;
     }
-    if (img.complete && img.naturalHeight !== 0) {
+    if (img.complete) {
       return mkTexture();
     } else {
       return new Promise(resolve => {
@@ -157,8 +165,17 @@ class Gl {
     // from 1 unit to texWidth, texHeight units
     matrix = m4.scale(matrix, texWidth, texHeight, 1);
    
-    // Set the matrix.
+    // Set the matrices.
     this.gl.uniformMatrix4fv(this.matrixLocation, false, matrix);
+    //~ let pmatrix = m4.perspective(2, this.width / this.height, -1, 1000);
+    //~ console.log(pmatrix);
+    //~ let pmatrix = new Float32Array(
+      //~ [0, 0, 0, 0,
+       //~ 0, 0, 0, 0,
+       //~ 0, 0, 0, 0,
+       //~ 0, 0, 0, 0]);
+    let pmatrix = m4.orthographic(-1, .5, -1, .5, -1, 1);
+    this.gl.uniformMatrix4fv(this.perspectiveLocation, false, pmatrix);
    
     // Tell the shader to get the texture from texture unit 0
     this.gl.uniform1i(this.textureLocation, 0);
@@ -199,11 +216,12 @@ let vertex = `attribute vec4 a_position;
 attribute vec2 a_texCoord;
  
 uniform mat4 u_matrix;
+uniform mat4 perspectiveMatrix;
  
 varying vec2 v_texCoord;
  
 void main() {
-   gl_Position = u_matrix * a_position;
+   gl_Position = u_matrix * a_position * perspectiveMatrix;
    v_texCoord = a_texCoord;
 }`;
 let fragment = `precision mediump float;
