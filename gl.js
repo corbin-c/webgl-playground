@@ -9,8 +9,32 @@ class Gl {
     this.resize();
     window.addEventListener("resize",() => {
       this.resize();
+      this.init();
     });
     this.gl = this.c.getContext("webgl") || this.c.getContext("experimental-webgl");
+    this.createProgram(vertex,fragment);
+    this.init();
+  }
+  init() {
+    // look up where the vertex data needs to go.
+    this.initBuffers();
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    this.gl.viewport(0, 0, this.width, this.height);
+    let imgs = [...document.querySelectorAll("img")];
+    let textures = [];
+    imgs.forEach(image => {
+      textures.push(this.createTexFromImage(image));
+    });
+    Promise.all(textures).then(textures => {
+      textures.forEach(tex => {
+        tex.position = tex.img.getBoundingClientRect();
+        this.drawImage(tex.texture,
+          tex.position.width,
+          tex.position.height,
+          tex.position.left,
+          tex.position.top);
+      });
+    });
   }
   resize() {
     const vw = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
@@ -91,7 +115,7 @@ class Gl {
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
     let mkTexture = () => {
       var textureInfo = {
-        position: img.getBoundingClientRect(),
+        img,
         width: img.naturalWidth,
         height: img.naturalHeight,
         texture: tex,
@@ -193,20 +217,4 @@ varying vec2 v_texCoord;
 void main() {
    gl_FragColor = texture2D(u_image, v_texCoord);
 }`;
-(() => {
-  let g = new Gl();
-  g.createProgram(vertex,fragment);
-  // look up where the vertex data needs to go.
-  g.initBuffers();
-  g.gl.clear(g.gl.COLOR_BUFFER_BIT);
-  g.gl.viewport(0, 0, g.width, g.height);
-
-
-  let imgs = [...document.querySelectorAll("img")];
-  imgs.forEach(async image => {
-    console.log(image)
-    let tex = await g.createTexFromImage(image);
-    console.log(tex);
-    g.drawImage(tex.texture,tex.position.width,tex.position.height,tex.position.left,tex.position.top);
-  });
-})();
+let g = new Gl();
