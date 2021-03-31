@@ -6,29 +6,29 @@ class Gl {
       this.c = document.createElement("canvas");
       document.body.append(this.c);
     }
-    this.resize();
-    this.mouse = { x: 0, y: 0 };
     window.addEventListener("resize",() => {
       this.resize();
-      this.init();
+      this.render();
     });
-
     this.gl = this.c.getContext("webgl") || this.c.getContext("experimental-webgl");
     this.createProgram(vertex,fragment);
     this.c.addEventListener("mousemove",(event) => { this.trackMouse(event) });
     this.init();
+    this.resize();
+    this.mouse = { x: this.width/2, y: this.height/2 };
+    this.render();
   }
   init() {
-    // look up where the vertex data needs to go.
     this.initBuffers();
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-    this.gl.viewport(0, 0, this.width, this.height);
     let imgs = [...document.querySelectorAll("img")];
-    let textures = [];
+    this.textures = [];
     imgs.forEach(image => {
-      textures.push(this.createTexFromImage(image));
+      this.textures.push(this.createTexFromImage(image));
     });
-    Promise.all(textures).then(textures => {
+  }
+  render(time) {
+    Promise.all(this.textures).then(textures => {
       textures.forEach(tex => {
         tex.position = tex.img.getBoundingClientRect();
         this.drawImage(tex.texture,
@@ -44,6 +44,7 @@ class Gl {
     const vh = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
     this.c.height = vh;
     this.c.width = vw;
+    this.gl.viewport(0, 0, this.width, this.height);
   }
   get width() {
     return this.c.width;
@@ -54,10 +55,14 @@ class Gl {
   trackMouse(e) {
     this.mouse.x = e.clientX;
     this.mouse.y = e.clientY;
+    this.render();
+    //~ this.init();
   }
   initBuffers() {
     this.positionLocation = this.gl.getAttribLocation(this.program, "a_position");
     this.texcoordLocation = this.gl.getAttribLocation(this.program, "a_texCoord");
+    //~ this.timeLoc = this.gl.getUniformLocation(this.program, "u_time");
+    //~ this.mouseCoordLocation = this.gl.getUniformLocation(this.program, "u_mouseCoord");
     this.matrixLocation = this.gl.getUniformLocation(this.program, "u_matrix");
     this.perspectiveLocation = this.gl.getUniformLocation(this.program, "perspectiveMatrix");
     this.textureLocation = this.gl.getUniformLocation(this.program, "u_texture");
@@ -113,7 +118,7 @@ class Gl {
     }
     return shader;
   }
-  createTexFromImage(img) { //img should be loaded
+  createTexFromImage(img) {
     var tex = this.gl.createTexture();
     this.gl.bindTexture(this.gl.TEXTURE_2D, tex);
    
@@ -130,6 +135,7 @@ class Gl {
       };
       this.gl.bindTexture(this.gl.TEXTURE_2D, textureInfo.texture);
       this.gl.texImage2D(this.gl.TEXTURE_2D, 0, this.gl.RGBA, this.gl.RGBA, this.gl.UNSIGNED_BYTE, img);
+      img.setAttribute("style","visibility: hidden;");
       return textureInfo;
     }
     if (img.complete) {
@@ -167,6 +173,16 @@ class Gl {
    
     // Set the matrices.
     this.gl.uniformMatrix4fv(this.matrixLocation, false, matrix);
+    
+    let mouse = {
+      x0: ((this.width/2 - this.mouse.x) > 0) ? (this.mouse.x / (this.width/2))*-1 : -1,
+      x1: ((this.width/2 - this.mouse.x) < 0) ? 1-((this.mouse.x / (this.width/2))-1) : 1,
+      y0: ((this.height/2 - this.mouse.y) > 0) ? (this.mouse.y / (this.height/2))*-1 : -1,
+      y1: ((this.height/2 - this.mouse.y) < 0) ? 1-((this.mouse.y / (this.height/2))-1) : 1,
+    };
+    let pmatrix = m4.orthographic(mouse.x0, mouse.x1, mouse.y0, mouse.y1, -1, 1);
+    this.gl.uniformMatrix4fv(this.perspectiveLocation, false, pmatrix);
+
     //~ let pmatrix = m4.perspective(2, this.width / this.height, -1, 1000);
     //~ console.log(pmatrix);
     //~ let pmatrix = new Float32Array(
@@ -174,8 +190,6 @@ class Gl {
        //~ 0, 0, 0, 0,
        //~ 0, 0, 0, 0,
        //~ 0, 0, 0, 0]);
-    let pmatrix = m4.orthographic(-1, .5, -1, .5, -1, 1);
-    this.gl.uniformMatrix4fv(this.perspectiveLocation, false, pmatrix);
    
     // Tell the shader to get the texture from texture unit 0
     this.gl.uniform1i(this.textureLocation, 0);
@@ -212,16 +226,37 @@ class Gl {
     ]), this.gl.STATIC_DRAW);
   }
 }
-let vertex = `attribute vec4 a_position;
+let vertex = `precision mediump float;
+attribute vec4 a_position;
 attribute vec2 a_texCoord;
- 
+
+//~ uniform vec2 u_mouseCoord;
+//~ uniform float u_time; 
 uniform mat4 u_matrix;
 uniform mat4 perspectiveMatrix;
  
 varying vec2 v_texCoord;
- 
+
+//~ precision mediump float;
+//~ attribute vec2 position;
+//~ uniform mat4 transformMatrix;
+//~ uniform mat4 perspectiveMatrix;
+//~ varying vec2 texcoords;
+
+
 void main() {
+  //~ float oscillation = 0.0;
+  //~ float amplitude = 0.2;
+  //~ float frequence = 4.0;
+  //~ float angle = (u_time + a_position.x) * frequence;
+
+  //~ oscillation +=  sin(angle) * amplitude;
+  //~ oscillation +=  1.0 + u_time;
+
+    //~ gl_Position = perspectiveMatrix * u_matrix * vec4(a_position, oscillation, 1.0);
    gl_Position = u_matrix * a_position * perspectiveMatrix;
+   //~ gl_Position = u_matrix * vec4(a_position.x, a_position.y, oscillation, 1.0) * perspectiveMatrix;
+   //~ gl_Position = u_matrix * vec4(a_position.x, a_position.y, 1.0, oscillation);
    v_texCoord = a_texCoord;
 }`;
 let fragment = `precision mediump float;
