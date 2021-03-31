@@ -36,18 +36,27 @@
       top: 0;
       left: 0;
     }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding-left: 20vw;
+      padding-right: 20vw;
+    }
+    section {
+      position: fixed;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-gap: 10vh;
+      grid-auto-rows: minmax(10px, auto);
+    }
     img {
-      width: 40%;
-      margin-top: 10vh;
-      margin-bottom: 10vh;
-      visibility: hidden;
-      margin-left: 30vh;
+      width: 100%;
     }
     .bkg {
       margin: 0;
       width: 300%;
       height: 300%;
-      z-index: 2;
       position: fixed;
       top: -100vh;
       left: -100vw;
@@ -57,8 +66,12 @@
   </head>
   <body>
     <img src="pattern.svg" class="bkg">
-    <img src="mire.jpg">
-    <img src="mire2.jpg">
+  <section>
+    <img src="4.jpg">
+    <img src="1.jpg">
+    <img src="2.jpg">
+    <img src="3.jpg">
+  </section>
     <script src="m4.js"></script>
     <script type="module" src="gl.js"></script>
   </body>
