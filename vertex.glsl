@@ -111,5 +111,5 @@ void main() {
   gl_Position = perspectiveMatrix * u_matrix * vec4(pos.xyz, 1.0);
 
   v_texCoord = (a_texCoord + 1.0) * .5;
-  v_wave = pos.z;
+  v_wave = pos.z - 1.;
 }
