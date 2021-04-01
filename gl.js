@@ -1,7 +1,10 @@
 class Gl {
-  constructor(canvas=null) {
-    if (canvas) {
-      this.c = canvas;
+  constructor(parameters) {
+    if ((!parameters.vertex) || (!parameters.fragment)) {
+      throw new Error("vertex & fragment parameters are mandatory");
+    }
+    if (parameters.canvas) {
+      this.c = parameters.canvas;
     } else {
       this.c = document.createElement("canvas");
       document.body.append(this.c);
@@ -10,17 +13,18 @@ class Gl {
       this.resize();
       this.render();
     });
+    this.programReady = new Promise((resolve) => {
+      this.programResolve = resolve;
+    });
     this.vertices = this.generateVertices(100);
     this.v_count = this.vertices.length * 0.5;
     this.gl = this.c.getContext("webgl") || this.c.getContext("experimental-webgl");
-    this.createProgram(vertex,fragment);
+    this.createProgram(parameters.vertex,parameters.fragment);
     this.c.addEventListener("mousemove",(event) => { this.trackMouse(event) });
     this.init();
-    this.resize();
-    this.mouse = { x: this.width/2, y: this.height/2 };
-    this.render();
   }
-  init() {
+  async init() {
+    await this.programReady;
     this.initBuffers();
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     let imgs = [...document.querySelectorAll("img")];
@@ -28,6 +32,9 @@ class Gl {
     imgs.forEach(image => {
       this.textures.push(this.createTexFromImage(image));
     });
+    this.resize();
+    this.mouse = { x: this.width/2, y: this.height/2 };
+    this.render();
   }
   render(time=0) {
     Promise.all(this.textures).then(textures => {
@@ -38,7 +45,7 @@ class Gl {
           tex.position.height,
           tex.position.left,
           tex.position.top,
-          (i == 0) ? 0 : time);
+          (i == 0) ? 0 : time+i*1500);
       });
     });
     requestAnimationFrame((t) => { this.render(t) });
@@ -65,6 +72,7 @@ class Gl {
     this.positionLocation = this.gl.getAttribLocation(this.program, "a_position");
     this.texcoordLocation = this.gl.getAttribLocation(this.program, "a_texCoord");
     this.matrixLocation = this.gl.getUniformLocation(this.program, "u_matrix");
+    this.mouseLoc = this.gl.getUniformLocation(this.program, "u_mouse");
     this.perspectiveLocation = this.gl.getUniformLocation(this.program, "perspectiveMatrix");
     this.textureLocation = this.gl.getUniformLocation(this.program, "u_texture");
     this.timeLocation = this.gl.getUniformLocation(this.program, "u_time");
@@ -97,7 +105,12 @@ class Gl {
     //~ ];
     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.vertices), this.gl.STATIC_DRAW);
   }
-  createProgram(vertexShader, fragmentShader) {
+  async createProgram(vertexShader, fragmentShader) {
+    vertexShader = await fetch(vertexShader);
+    vertexShader = await vertexShader.text();
+    fragmentShader = await fetch(fragmentShader);
+    fragmentShader = await fragmentShader.text();
+    
     vertexShader = this.compileShader(vertexShader, this.gl.VERTEX_SHADER);
     fragmentShader = this.compileShader(fragmentShader, this.gl.FRAGMENT_SHADER);
     let program = this.gl.createProgram();
@@ -108,6 +121,7 @@ class Gl {
       throw ("program failed to link:" + this.gl.getProgramInfoLog(program));
     }
     this.program = program;
+    this.programResolve();
   }
   compileShader(shaderSource, shaderType) {
     let shader = this.gl.createShader(shaderType);
@@ -164,9 +178,12 @@ class Gl {
     matrix = m4.translate(matrix, dstX + texWidth/2, dstY + texHeight/2, 0);
 
     matrix = m4.scale(matrix, texWidth/2, texHeight/2, 1);
+    //~ matrix = m4.zRotate(matrix, Math.PI/2);
    
     this.gl.uniformMatrix4fv(this.matrixLocation, false, matrix);
     this.gl.uniform1f(this.timeLocation, time * 0.001);
+    //~ this.gl.uniform2f(this.mouseLoc, (this.mouse.x/this.width)*2-1, (this.mouse.y/this.height)*2-1);
+    this.gl.uniform2f(this.mouseLoc, this.mouse.x/this.width, this.mouse.y/this.height);
 
     let mouse = {
       x0: ((this.width/2 - this.mouse.x) > 0) ? (this.mouse.x / (this.width/2))*-1 : -1,
@@ -232,36 +249,4 @@ class Gl {
     return vertices;
   }
 }
-let vertex = `precision mediump float;
-attribute vec4 a_position;
-attribute vec2 a_texCoord;
-
-uniform mat4 u_matrix;
-uniform float u_time;
-uniform mat4 perspectiveMatrix;
- 
-varying vec2 v_texCoord;
-
-void main() {
-  float oscillation = 1.0;
-  float frequence = 3.0;
-  float amplitude = .1;
-
-  float angle = (u_time + a_position.x) * frequence;
-  oscillation +=  sin(angle) * amplitude;
-
-  //~ gl_Position = u_matrix * a_position * perspectiveMatrix * vec4(1.0, 1.0, 1.0, oscillation);
-  gl_Position = u_matrix * a_position * vec4(1.0, 1.0, 1.0, oscillation);
-  //~ gl_Position = u_matrix * a_position;
-  //~ v_texCoord = (a_texCoord + 1.0) * .5;
-  v_texCoord = (a_texCoord + 1.0) * .5;
-}`;
-let fragment = `precision mediump float;
-uniform sampler2D u_image;
-
-varying vec2 v_texCoord;
-
-void main() {
-   gl_FragColor = texture2D(u_image, v_texCoord);
-}`;
-let g = new Gl();
+let g = new Gl({ fragment: "./fragment.glsl", vertex: "./vertex.glsl" });
