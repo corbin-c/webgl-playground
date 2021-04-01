@@ -106,11 +106,7 @@ class Gl {
     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.vertices), this.gl.STATIC_DRAW);
   }
   async createProgram(vertexShader, fragmentShader) {
-    vertexShader = await fetch(vertexShader);
-    vertexShader = await vertexShader.text();
-    fragmentShader = await fetch(fragmentShader);
-    fragmentShader = await fragmentShader.text();
-    
+    try {
     vertexShader = this.compileShader(vertexShader, this.gl.VERTEX_SHADER);
     fragmentShader = this.compileShader(fragmentShader, this.gl.FRAGMENT_SHADER);
     let program = this.gl.createProgram();
@@ -122,6 +118,14 @@ class Gl {
     }
     this.program = program;
     this.programResolve();
+    } catch {
+      console.info("fallback to external shaders");
+      vertexShader = await fetch(vertexShader);
+      vertexShader = await vertexShader.text();
+      fragmentShader = await fetch(fragmentShader);
+      fragmentShader = await fragmentShader.text();
+      this.createProgram(vertexShader, fragmentShader);
+    }
   }
   compileShader(shaderSource, shaderType) {
     let shader = this.gl.createShader(shaderType);
@@ -182,7 +186,6 @@ class Gl {
    
     this.gl.uniformMatrix4fv(this.matrixLocation, false, matrix);
     this.gl.uniform1f(this.timeLocation, time * 0.001);
-    //~ this.gl.uniform2f(this.mouseLoc, (this.mouse.x/this.width)*2-1, (this.mouse.y/this.height)*2-1);
     this.gl.uniform2f(this.mouseLoc, this.mouse.x/this.width, this.mouse.y/this.height);
 
     let mouse = {
@@ -191,39 +194,12 @@ class Gl {
       y0: ((this.height/2 - this.mouse.y) > 0) ? (this.mouse.y / (this.height/2))*-1 : -1,
       y1: ((this.height/2 - this.mouse.y) < 0) ? 1-((this.mouse.y / (this.height/2))-1) : 1,
     };
-    let pmatrix = m4.orthographic(mouse.x0, mouse.x1, mouse.y0, mouse.y1, -1, 1);
+    let pmatrix = m4.perspective(1, this.width/this.height, 1, 1000);
+    //~ let pmatrix = m4.orthographic(mouse.x0, mouse.x1, mouse.y0, mouse.y1, -1, 1);
     //~ let pmatrix = m4.orthographic(0, this.width, this.height, 0, -1, 1);
     this.gl.uniformMatrix4fv(this.perspectiveLocation, false, pmatrix);
     this.gl.uniform1i(this.textureLocation, 0);
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, this.v_count);
-  }
-  mkView(x,y,width,height,img) {
-    let array = [
-        x/img.width,  y/img.height,
-        (x+width)/img.width,  y/img.height,
-        x/img.width,  (y+height)/img.height,
-        x/img.width,  (y+height)/img.height,
-        (x+width)/img.width,  y/img.height,
-        (x+width)/img.width,  (y+height)/img.height,
-    ];
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(array),
-      this.gl.STATIC_DRAW);
-  }
-  setRectangle(x, y, width, height) {
-    var x1 = x;
-    var x2 = x + width;
-    var y1 = y;
-    var y2 = y + height;
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array([
-       x1, y1,
-       x2, y1,
-       x1, y2,
-       x1, y2,
-       x2, y1,
-       x2, y2,
-    ]), this.gl.STATIC_DRAW);
   }
   generateVertices(indicesNum) {
     let vertices = [];
