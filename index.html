@@ -61,11 +61,32 @@
       top: -100vh;
       left: -100vw;
     }
+    form {
+      display: none;
+      position: fixed;
+      z-index: 300;
+      top: 0;
+      right: 0;
+    }
+    form input {
+      display: block;
+      appearance: none;
+      background: #d3d3d3;
+    }
+    label {
+      color: white;
+      background: black;
+    }
     </style>
     <title>GL TEST</title>
   </head>
   <body>
-    <img src="pattern.svg" class="bkg">
+  <form>
+    <input type="range" min="0" max="2" value="1" step="0.01" id="a"><label id="la">1</label>
+    <input type="range" min="0" max="1" value="1" step="0.01" id="b"><label id="lb">1</label>
+    <input type="range" min="1" max="1000" value="1000" id="c"><label id="lc">1000</label>
+  </form>
+  <img src="pattern.svg" class="bkg">
   <section>
     <img src="4.jpg">
     <img src="1.jpg">

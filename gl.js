@@ -45,7 +45,7 @@ class Gl {
           tex.position.height,
           tex.position.left,
           tex.position.top,
-          (i == 0) ? 0 : time+i*1500);
+          (i == 0) ? 0 : time+i*2500);
       });
     });
     requestAnimationFrame((t) => { this.render(t) });
@@ -105,7 +105,7 @@ class Gl {
     //~ ];
     this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.vertices), this.gl.STATIC_DRAW);
   }
-  async createProgram(vertexShader, fragmentShader) {
+  async createProgram(vertexShader, fragmentShader, fetched=false) {
     try {
     vertexShader = this.compileShader(vertexShader, this.gl.VERTEX_SHADER);
     fragmentShader = this.compileShader(fragmentShader, this.gl.FRAGMENT_SHADER);
@@ -118,13 +118,17 @@ class Gl {
     }
     this.program = program;
     this.programResolve();
-    } catch {
-      console.info("fallback to external shaders");
-      vertexShader = await fetch(vertexShader);
-      vertexShader = await vertexShader.text();
-      fragmentShader = await fetch(fragmentShader);
-      fragmentShader = await fragmentShader.text();
-      this.createProgram(vertexShader, fragmentShader);
+    } catch (e) {
+      if (!fetched) {
+        console.info("fallback to external shaders");
+        vertexShader = await fetch(vertexShader);
+        vertexShader = await vertexShader.text();
+        fragmentShader = await fetch(fragmentShader);
+        fragmentShader = await fragmentShader.text();
+        this.createProgram(vertexShader, fragmentShader, true);
+      } else {
+        throw e;
+      }
     }
   }
   compileShader(shaderSource, shaderType) {
@@ -188,15 +192,29 @@ class Gl {
     this.gl.uniform1f(this.timeLocation, time * 0.001);
     this.gl.uniform2f(this.mouseLoc, this.mouse.x/this.width, this.mouse.y/this.height);
 
+    //~ let persp = {
+      //~ frustum: parseFloat(document.querySelector("#a").value),
+      //~ near: parseFloat(document.querySelector("#b").value),
+      //~ far: parseInt(document.querySelector("#c").value)
+    //~ }
+    //~ if (document.querySelector("#la").innerHTML != persp.frustum) {
+      //~ document.querySelector("#la").innerHTML = persp.frustum;
+    //~ }
+    //~ if (document.querySelector("#lb").innerHTML != persp.near) {
+      //~ document.querySelector("#lb").innerHTML = persp.near;
+    //~ }
+    //~ if (document.querySelector("#lc").innerHTML != persp.far) {
+      //~ document.querySelector("#lc").innerHTML = persp.far;
+    //~ }
+    
+    //~ persp.frustum = persp.frustum*Math.PI / 180;
     let mouse = {
       x0: ((this.width/2 - this.mouse.x) > 0) ? (this.mouse.x / (this.width/2))*-1 : -1,
       x1: ((this.width/2 - this.mouse.x) < 0) ? 1-((this.mouse.x / (this.width/2))-1) : 1,
       y0: ((this.height/2 - this.mouse.y) > 0) ? (this.mouse.y / (this.height/2))*-1 : -1,
       y1: ((this.height/2 - this.mouse.y) < 0) ? 1-((this.mouse.y / (this.height/2))-1) : 1,
     };
-    let pmatrix = m4.perspective(1, this.width/this.height, 1, 1000);
-    //~ let pmatrix = m4.orthographic(mouse.x0, mouse.x1, mouse.y0, mouse.y1, -1, 1);
-    //~ let pmatrix = m4.orthographic(0, this.width, this.height, 0, -1, 1);
+    let pmatrix = m4.perspective(1.57, 1, 0, 1000);
     this.gl.uniformMatrix4fv(this.perspectiveLocation, false, pmatrix);
     this.gl.uniform1i(this.textureLocation, 0);
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, this.v_count);

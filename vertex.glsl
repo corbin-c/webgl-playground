@@ -102,14 +102,13 @@ float snoise(vec3 v) {
 }
 
 void main() {
-  float freq = 3.5;
-  float amp = .15;
+  float freq = 0.8;
+  float amp = .1;
 
   vec3 pos = a_position.xyz;
   vec3 wavePos = vec3(pos.x * freq + u_time, pos.y, pos.z);
-  //~ pos.z += sin((a_position.x + u_time) * freq) * amp;
-  pos.z += snoise(wavePos) * amp;
-  gl_Position = u_matrix * perspectiveMatrix * vec4(pos,1.0);
+  pos.z = 1. + snoise(wavePos) * amp;
+  gl_Position = perspectiveMatrix * u_matrix * vec4(pos.xyz, 1.0);
 
   v_texCoord = (a_texCoord + 1.0) * .5;
   v_wave = pos.z;
