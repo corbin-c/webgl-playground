@@ -10,6 +10,8 @@ class Gl {
       this.resize();
       this.render();
     });
+    this.vertices = this.generateVertices(100);
+    this.v_count = this.vertices.length * 0.5;
     this.gl = this.c.getContext("webgl") || this.c.getContext("experimental-webgl");
     this.createProgram(vertex,fragment);
     this.c.addEventListener("mousemove",(event) => { this.trackMouse(event) });
@@ -29,14 +31,14 @@ class Gl {
   }
   render(time=0) {
     Promise.all(this.textures).then(textures => {
-      textures.forEach(tex => {
+      textures.forEach((tex,i) => {
         tex.position = tex.img.getBoundingClientRect();
         this.drawImage(tex.texture,
           tex.position.width,
           tex.position.height,
           tex.position.left,
           tex.position.top,
-          time);
+          (i == 0) ? 0 : time);
       });
     });
     requestAnimationFrame((t) => { this.render(t) });
@@ -70,28 +72,30 @@ class Gl {
     this.positionBuffer = this.gl.createBuffer();
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
 
-    let positions = [
-      0, 0,
-      0, 1,
-      1, 0,
-      1, 0,
-      0, 1,
-      1, 1,
-    ];
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(positions), this.gl.STATIC_DRAW);
+    //~ let positions = [
+      //~ 0, 0,
+      //~ 0, 1,
+      //~ 1, 0,
+      //~ 1, 0,
+      //~ 0, 1,
+      //~ 1, 1,
+    //~ ];
+
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.vertices), this.gl.STATIC_DRAW);
+    //~ this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(positions), this.gl.STATIC_DRAW);
 
     this.texcoordBuffer = this.gl.createBuffer();
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.texcoordBuffer);
 
-    this.texcoords = [
-      0, 0,
-      0, 1,
-      1, 0,
-      1, 0,
-      0, 1,
-      1, 1,
-    ];
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.texcoords), this.gl.STATIC_DRAW);
+    //~ this.texcoords = [
+      //~ 0, 0,
+      //~ 0, 1,
+      //~ 1, 0,
+      //~ 1, 0,
+      //~ 0, 1,
+      //~ 1, 1,
+    //~ ];
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(this.vertices), this.gl.STATIC_DRAW);
   }
   createProgram(vertexShader, fragmentShader) {
     vertexShader = this.compileShader(vertexShader, this.gl.VERTEX_SHADER);
@@ -121,6 +125,7 @@ class Gl {
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_S, this.gl.CLAMP_TO_EDGE);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_WRAP_T, this.gl.CLAMP_TO_EDGE);
     this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MIN_FILTER, this.gl.LINEAR);
+    this.gl.texParameteri(this.gl.TEXTURE_2D, this.gl.TEXTURE_MAG_FILTER, this.gl.LINEAR);
     let mkTexture = () => {
       var textureInfo = {
         img,
@@ -155,10 +160,10 @@ class Gl {
     this.gl.vertexAttribPointer(this.texcoordLocation, 2, this.gl.FLOAT, false, 0, 0);
    
     let matrix = m4.orthographic(0, this.width, this.height, 0, -1, 1);
-   
-    matrix = m4.translate(matrix, dstX, dstY, 0);
-   
-    matrix = m4.scale(matrix, texWidth, texHeight, 1);
+
+    matrix = m4.translate(matrix, dstX + texWidth/2, dstY + texHeight/2, 0);
+
+    matrix = m4.scale(matrix, texWidth/2, texHeight/2, 1);
    
     this.gl.uniformMatrix4fv(this.matrixLocation, false, matrix);
     this.gl.uniform1f(this.timeLocation, time * 0.001);
@@ -170,9 +175,10 @@ class Gl {
       y1: ((this.height/2 - this.mouse.y) < 0) ? 1-((this.mouse.y / (this.height/2))-1) : 1,
     };
     let pmatrix = m4.orthographic(mouse.x0, mouse.x1, mouse.y0, mouse.y1, -1, 1);
+    //~ let pmatrix = m4.orthographic(0, this.width, this.height, 0, -1, 1);
     this.gl.uniformMatrix4fv(this.perspectiveLocation, false, pmatrix);
     this.gl.uniform1i(this.textureLocation, 0);
-    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, this.v_count);
   }
   mkView(x,y,width,height,img) {
     let array = [
@@ -202,6 +208,29 @@ class Gl {
        x2, y2,
     ]), this.gl.STATIC_DRAW);
   }
+  generateVertices(indicesNum) {
+    let vertices = [];
+    const limit = Math.ceil(indicesNum/4)-4;
+    for(let i = limit; i > 0; i--) {
+      let j = -1 * i/limit;
+      vertices.push(j);
+      vertices.push(1.0);
+      vertices.push(j);
+      vertices.push(-1.0);
+    }
+    vertices.push(0.0);
+    vertices.push(1.0);
+    vertices.push(0.0);
+    vertices.push(-1.0);
+    for(let k = 1; k <= limit; k++) {
+      let l = k/limit;
+      vertices.push(l);
+      vertices.push(1.0);
+      vertices.push(l);
+      vertices.push(-1.0);
+    }
+    return vertices;
+  }
 }
 let vertex = `precision mediump float;
 attribute vec4 a_position;
@@ -215,14 +244,17 @@ varying vec2 v_texCoord;
 
 void main() {
   float oscillation = 1.0;
-  float frequence = 4.0;
-  float amplitude = 0.2;
+  float frequence = 3.0;
+  float amplitude = .1;
 
   float angle = (u_time + a_position.x) * frequence;
   oscillation +=  sin(angle) * amplitude;
 
-  gl_Position = u_matrix * a_position * perspectiveMatrix * vec4(1.0, 1.0, 1.0, oscillation);;
-  v_texCoord = a_texCoord;
+  //~ gl_Position = u_matrix * a_position * perspectiveMatrix * vec4(1.0, 1.0, 1.0, oscillation);
+  gl_Position = u_matrix * a_position * vec4(1.0, 1.0, 1.0, oscillation);
+  //~ gl_Position = u_matrix * a_position;
+  //~ v_texCoord = (a_texCoord + 1.0) * .5;
+  v_texCoord = (a_texCoord + 1.0) * .5;
 }`;
 let fragment = `precision mediump float;
 uniform sampler2D u_image;
