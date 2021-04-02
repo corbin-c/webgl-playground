@@ -45,7 +45,8 @@ class Gl {
           tex.position.height,
           tex.position.left,
           tex.position.top,
-          (i == 0) ? 0 : time+i*2500);
+          //~ (i == 0) ? 0 : time+i*2500);
+          time);
       });
     });
     requestAnimationFrame((t) => { this.render(t) });
@@ -183,10 +184,11 @@ class Gl {
    
     let matrix = m4.orthographic(0, this.width, this.height, 0, -1, 1);
 
-    matrix = m4.translate(matrix, dstX + texWidth/2, dstY + texHeight/2, 0);
+    matrix = m4.translate(matrix, dstX + texWidth/2, dstY + texHeight/2, 1.0);
 
     matrix = m4.scale(matrix, texWidth/2, texHeight/2, 1);
-    //~ matrix = m4.zRotate(matrix, Math.PI/2);
+    matrix = m4.yRotate(matrix, Math.PI/60);
+    matrix = m4.xRotate(matrix, Math.PI/60);
    
     this.gl.uniformMatrix4fv(this.matrixLocation, false, matrix);
     this.gl.uniform1f(this.timeLocation, time * 0.001);
@@ -214,7 +216,7 @@ class Gl {
       y0: ((this.height/2 - this.mouse.y) > 0) ? (this.mouse.y / (this.height/2))*-1 : -1,
       y1: ((this.height/2 - this.mouse.y) < 0) ? 1-((this.mouse.y / (this.height/2))-1) : 1,
     };
-    let pmatrix = m4.perspective(1.57, 1, 0, 1000);
+    let pmatrix = m4.perspective(Math.PI/2, 1, 0, 1000);
     this.gl.uniformMatrix4fv(this.perspectiveLocation, false, pmatrix);
     this.gl.uniform1i(this.textureLocation, 0);
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, this.v_count);

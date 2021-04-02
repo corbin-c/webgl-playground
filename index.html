@@ -2,6 +2,13 @@
 <html>
   <head>
     <style>
+     @import url('https://fonts.googleapis.com/css2?family=Abril+Fatface&display=swap');
+    :root {
+      /* 6c9a8b-e8998d-eed2cc */
+      --neutral: #eed2cc;
+      --contrast: #e8998d;
+      --regular: #6c9a8b;
+    }
     * {
       margin: 0px;
       padding: 0px;
@@ -27,31 +34,52 @@
       -moz-user-select: none;
       -ms-user-select: none;
       user-select: none;
+      font-family: 'Abril Fatface', cursive;
     }
     canvas {
       width: 100vw;
       height: 100vh;
       position: fixed;
-      z-index: 3;
+      z-index: 1;
       top: 0;
       left: 0;
     }
     body {
+      background: var(--neutral);
+      color: var(--regular);
+      font-size: 10vh;
+    }
+    nav {
+      position: fixed;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+    }
+    ul {
+      list-style-type: none;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding-left: 20vw;
-      padding-right: 20vw;
+      justify-content: space-evenly;
+      height: 100%;
+    }
+    ul li {
+      position: relative;
+      width: 100%;
+      text-align: center;
     }
     section {
       position: fixed;
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      grid-gap: 10vh;
+      grid-template-columns: repeat(1, 1fr);
+      grid-gap: 5vh;
       grid-auto-rows: minmax(10px, auto);
     }
     img {
-      width: 100%;
+      width: 35vh;
+      position: absolute;
+      top: -33%;
+      left: calc(50vw - 17.5vh);
     }
     .bkg {
       margin: 0;
@@ -86,13 +114,27 @@
     <input type="range" min="0" max="1" value="1" step="0.01" id="b"><label id="lb">1</label>
     <input type="range" min="1" max="1000" value="1000" id="c"><label id="lc">1000</label>
   </form>
+<!--
   <img src="pattern.svg" class="bkg">
+-->
   <section>
+<!--
     <img src="4.jpg">
+-->
+<!--
     <img src="1.jpg">
     <img src="2.jpg">
     <img src="3.jpg">
+-->
   </section>
+  <nav>
+    <ul>
+      <li>Hinnøya, Norway<img src="4.jpg"></li>
+      <li>Canberra, Australia<img src="2.jpg"></li>
+      <li>Olkhon, Russia<img src="3.jpg"></li>
+      <li>Kyoto, Japan<img src="1.jpg"></li>
+    </ul>
+  </nav>
     <script src="m4.js"></script>
     <script type="module" src="gl.js"></script>
   </body>
